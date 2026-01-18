@@ -25,7 +25,7 @@ resource "aws_vpc" "main" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_support   = true
   enable_dns_hostnames = true
-  tags = local.tags
+  tags                 = local.tags
 }
 
 resource "aws_internet_gateway" "igw" {
@@ -42,8 +42,11 @@ resource "aws_subnet" "public" {
   cidr_block              = cidrsubnet("10.0.0.0/16", 4, count.index)
   availability_zone       = data.aws_availability_zones.available.names[count.index]
   map_public_ip_on_launch = true
+
   tags = merge(local.tags, {
-    Name = "${local.name_prefix}-public-${count.index}"
+    Name                                = "${local.name_prefix}-public-${count.index}"
+    "kubernetes.io/cluster/${local.name_prefix}-eks" = "shared"
+    "kubernetes.io/role/elb"            = "1"
   })
 }
 
@@ -52,13 +55,29 @@ resource "aws_subnet" "private" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = cidrsubnet("10.0.0.0/16", 4, count.index + 4)
   availability_zone = data.aws_availability_zones.available.names[count.index]
+
   tags = merge(local.tags, {
-    Name = "${local.name_prefix}-private-${count.index}"
+    Name                                = "${local.name_prefix}-private-${count.index}"
+    "kubernetes.io/cluster/${local.name_prefix}-eks" = "shared"
+    "kubernetes.io/role/internal-elb"   = "1"
   })
 }
 
 ########################################
-# ROUTES
+# NAT Gateway for private subnets
+########################################
+resource "aws_eip" "nat" {
+  domain = "vpc"
+}
+
+resource "aws_nat_gateway" "nat" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public[0].id
+  depends_on    = [aws_internet_gateway.igw]
+}
+
+########################################
+# ROUTE TABLES
 ########################################
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
@@ -77,6 +96,23 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.main.id
+  tags   = local.tags
+}
+
+resource "aws_route" "private_nat" {
+  route_table_id         = aws_route_table.private.id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = aws_nat_gateway.nat.id
+}
+
+resource "aws_route_table_association" "private" {
+  count          = 2
+  subnet_id      = aws_subnet.private[count.index].id
+  route_table_id = aws_route_table.private.id
+}
+
 ########################################
 # IAM ROLE - EKS CLUSTER
 ########################################
@@ -86,11 +122,9 @@ resource "aws_iam_role" "eks_cluster_role" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect = "Allow"
-      Principal = {
-        Service = "eks.amazonaws.com"
-      }
-      Action = "sts:AssumeRole"
+      Effect    = "Allow"
+      Principal = { Service = "eks.amazonaws.com" }
+      Action    = "sts:AssumeRole"
     }]
   })
 
@@ -127,7 +161,7 @@ resource "aws_security_group" "eks_sg" {
 }
 
 ########################################
-# EKS CLUSTER (NO MODULE)
+# EKS CLUSTER
 ########################################
 resource "aws_eks_cluster" "this" {
   name     = "${local.name_prefix}-eks"
@@ -135,8 +169,10 @@ resource "aws_eks_cluster" "this" {
   version  = "1.29"
 
   vpc_config {
-    subnet_ids         = aws_subnet.private[*].id
-    security_group_ids = [aws_security_group.eks_sg.id]
+    subnet_ids              = aws_subnet.private[*].id
+    security_group_ids      = [aws_security_group.eks_sg.id]
+    endpoint_private_access = true
+    endpoint_public_access  = true
   }
 
   depends_on = [
@@ -147,7 +183,7 @@ resource "aws_eks_cluster" "this" {
 }
 
 ########################################
-# IAM ROLE - EKS NODES
+# IAM ROLE - EKS Nodes
 ########################################
 resource "aws_iam_role" "eks_node_role" {
   name = "${local.name_prefix}-eks-node-role"
@@ -155,11 +191,9 @@ resource "aws_iam_role" "eks_node_role" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect = "Allow"
-      Principal = {
-        Service = "ec2.amazonaws.com"
-      }
-      Action = "sts:AssumeRole"
+      Effect    = "Allow"
+      Principal = { Service = "ec2.amazonaws.com" }
+      Action    = "sts:AssumeRole"
     }]
   })
 
@@ -186,13 +220,13 @@ resource "aws_eks_node_group" "default" {
   node_role_arn   = aws_iam_role.eks_node_role.arn
   subnet_ids      = aws_subnet.private[*].id
 
+  instance_types = ["t3.micro"]
+
   scaling_config {
     desired_size = 1
     min_size     = 1
     max_size     = 2
   }
-
-  instance_types = ["t3.micro"]
 
   depends_on = [
     aws_iam_role_policy_attachment.node_policies
