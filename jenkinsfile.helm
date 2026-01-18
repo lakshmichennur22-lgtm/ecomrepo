@@ -1,0 +1,31 @@
+pipeline {
+    agent any
+
+    environment {
+        KUBECONFIG = '/tmp/kubeconfig'
+    }
+
+    stages {
+        stage('Configure Kube') {
+            steps {
+                // Update kubeconfig from EKS
+                sh 'aws eks update-kubeconfig --name my-cluster --region ap-south-1 --kubeconfig $KUBECONFIG'
+            }
+        }
+
+        stage('Install ALB Controller') {
+            steps {
+                sh '''
+                helm repo add eks https://aws.github.io/eks-charts
+                helm repo update
+                helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
+                  -n kube-system \
+                  --create-namespace \
+                  --set clusterName=my-cluster \
+                  --set region=ap-south-1 \
+                  --set vpcId=vpc-xxxx
+                '''
+            }
+        }
+    }
+}

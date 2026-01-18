@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: purplexecommercedevcusregistry.azurecr.io/ecom-backend:latest
+          image: 579201838441.dkr.ecr.us-east-1.amazonaws.com/ecom_backend_portal_repo:latest
           ports:
             - containerPort: 8080
 
