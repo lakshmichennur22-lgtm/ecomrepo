@@ -1,0 +1,8 @@
+aws ecr delete-repository \
+  --repository-name job_portal_repo \
+  --region us-east-1 \
+  --force
+
+aws ecr create-repository \
+  --repository-name my-repo \
+  --region ap-south-1

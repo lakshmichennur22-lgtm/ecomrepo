@@ -1,0 +1,47 @@
+pipeline {
+    agent any
+
+    environment {
+        AWS_REGION         = "us-east-1"
+        AWS_DEFAULT_REGION = "us-east-1"
+        CLUSTER_NAME       = "ecom-ptl-dev-use-ecs"
+        SERVICE_NAME       = "ecom-ptl-dev-use-backend"
+    }
+
+    stages {
+
+        stage('Deploy to ECS') {
+            steps {
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'Adithya'
+                ]]) {
+
+                    sh '''
+                    aws sts get-caller-identity
+
+                    aws ecs update-service \
+                        --cluster ${CLUSTER_NAME} \
+                        --service ${SERVICE_NAME} \
+                        --force-new-deployment \
+                        --region ${AWS_REGION}
+
+                    aws ecs wait services-stable \
+                        --cluster ${CLUSTER_NAME} \
+                        --services ${SERVICE_NAME} \
+                        --region ${AWS_REGION}
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "🚀 Deployment Successful! ECS Running New Frontend Image"
+        }
+        failure {
+            echo "❌ Deployment Failed!"
+        }
+    }
+}

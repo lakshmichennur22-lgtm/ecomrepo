@@ -1,0 +1,20 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Terraform infra destroy') {
+            steps {
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'Adithya']
+                ]) {
+                    sh '''
+                        cd IaaC
+                        terraform init -reconfigure -backend-config=dev/backend.tfvars
+                        terraform destroy -auto-approve -var-file=dev/dev.tfvars
+                    '''
+                }
+            }
+        }
+    }
+}

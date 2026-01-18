@@ -1,0 +1,22 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Terraform infra deployment') {
+            steps {
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'Adithya']
+                ]) {
+                    sh '''
+                        cd IaaC
+                        terraform init -reconfigure -backend-config=dev/backend.tfvars
+                        terraform validate
+                        terraform plan -out=tfplan -var-file=dev/dev.tfvars
+                        terraform apply -auto-approve tfplan
+                    '''
+                }
+            }
+        }
+    }
+}
