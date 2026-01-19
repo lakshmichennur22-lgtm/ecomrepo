@@ -17,20 +17,26 @@ pipeline {
                 }
             }
         }
-
-        stage('Install ALB Controller') {
+        stage('install ALB') {
             steps {
-                sh '''
-                helm repo add eks https://aws.github.io/eks-charts
-                helm repo update
-                helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
-                  -n kube-system \
-                  --create-namespace \
-                  --set clusterName=ecom-ptl-dev-use-eks \
-                  --set region=us-east-1 \
-                  --set vpcId=vpc-05150d92f824de04d
-                '''
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'Adithya'
+                ]]) {
+                    sh '''
+                    helm repo add eks https://aws.github.io/eks-charts
+                    helm repo update
+                    helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
+                     -n kube-system \
+                     --create-namespace \
+                     --set clusterName=ecom-ptl-dev-use-eks \
+                     --set region=us-east-1 \
+                     --set vpcId=vpc-05150d92f824de04d
+                    '''
+
+                }
             }
         }
+    
     }
 }
