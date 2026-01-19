@@ -1,0 +1,35 @@
+pipeline {
+    agent any
+
+    environment {
+        KUBECONFIG = '/tmp/kubeconfig'
+    }
+
+    stages {
+        stage('Deploy to ECS') {
+            steps {
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'Adithya'
+                ]]) {
+                    sh 'aws eks update-kubeconfig --name ecom-ptl-dev-use-eks --region us-east-1 --kubeconfig $KUBECONFIG'
+
+                }
+            }
+        }
+        stage('install ALB') {
+            steps {
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'Adithya'
+                ]]) {
+                    sh '''
+                    helm uninstall aws-load-balancer-controller -n kube-system
+                    '''
+
+                }
+            }
+        }
+    
+    }
+}
