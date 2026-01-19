@@ -6,10 +6,15 @@ pipeline {
     }
 
     stages {
-        stage('Configure Kube') {
+        stage('Deploy to ECS') {
             steps {
-                // Update kubeconfig from EKS
-                sh 'aws eks update-kubeconfig --name ecom-ptl-dev-use-eks --region us-east-1 --kubeconfig $KUBECONFIG'
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'Adithya'
+                ]]) {
+                    sh 'aws eks update-kubeconfig --name ecom-ptl-dev-use-eks --region us-east-1 --kubeconfig $KUBECONFIG'
+
+                }
             }
         }
 
