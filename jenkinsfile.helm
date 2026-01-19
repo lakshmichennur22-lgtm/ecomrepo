@@ -9,7 +9,7 @@ pipeline {
         stage('Configure Kube') {
             steps {
                 // Update kubeconfig from EKS
-                sh 'aws eks update-kubeconfig --name my-cluster --region ap-south-1 --kubeconfig $KUBECONFIG'
+                sh 'aws eks update-kubeconfig --name ecom-ptl-dev-use-eks --region us-east-1 --kubeconfig $KUBECONFIG'
             }
         }
 
@@ -21,9 +21,9 @@ pipeline {
                 helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
                   -n kube-system \
                   --create-namespace \
-                  --set clusterName=my-cluster \
-                  --set region=ap-south-1 \
-                  --set vpcId=vpc-xxxx
+                  --set clusterName=ecom-ptl-dev-use-eks \
+                  --set region=us-east-1 \
+                  --set vpcId=vpc-05150d92f824de04d
                 '''
             }
         }
