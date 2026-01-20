@@ -2,12 +2,18 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: app-ingress
+  namespace: frontend
   annotations:
     kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/group.name: ecommerce
+
+    # Frontend health check
     alb.ingress.kubernetes.io/healthcheck-path: /
+
+    # Backend specific
+    alb.ingress.kubernetes.io/backend-protocol: HTTP
 spec:
   rules:
     - http:
