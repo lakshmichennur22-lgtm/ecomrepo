@@ -6,6 +6,7 @@ pipeline {
         AWS_DEFAULT_REGION = "us-east-1"
         CLUSTER_NAME       = "ecom-ptl-dev-use-eks"
         KUBECONFIG         = "/tmp/kubeconfig"
+    }
 
     stages {
 
@@ -15,28 +16,25 @@ pipeline {
             }
         }
 
-
-        stage("Deploy Frontend") {
+        stage('Deploy Frontend') {
             steps {
                 withCredentials([
-                [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'Adithya']
+                    [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'Adithya']
                 ]) {
-                sh '''
-                aws sts get-caller-identity
+                    sh '''
+                        aws sts get-caller-identity
 
-                aws eks update-kubeconfig \
-                    --name $CLUSTER_NAME \
-                    --region $AWS_REGION \
-                    --kubeconfig $KUBECONFIG
+                        aws eks update-kubeconfig \
+                          --name $CLUSTER_NAME \
+                          --region $AWS_REGION \
+                          --kubeconfig $KUBECONFIG
 
-                kubectl get nodes
-                kubectl apply -f ./frontend/kubernetes
-                
-                '''
+                        kubectl get nodes
+                        kubectl apply -f ./frontend/kubernetes
+                    '''
                 }
             }
-            }
-        } 
-    } 
-}          
-         
+        }
+
+    }
+}
