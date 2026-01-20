@@ -44,6 +44,8 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
   tags = merge(local.tags, {
     Name = "${local.name_prefix}-public-${count.index}"
+    "kubernetes.io/role/elb" = "1"
+    "kubernetes.io/cluster/${local.name_prefix}-eks" = "shared"
   })
 }
 
@@ -54,6 +56,8 @@ resource "aws_subnet" "private" {
   availability_zone = data.aws_availability_zones.available.names[count.index]
   tags = merge(local.tags, {
     Name = "${local.name_prefix}-private-${count.index}"
+    "kubernetes.io/role/internal-elb" = "1"
+    "kubernetes.io/cluster/${local.name_prefix}-eks" = "shared"
   })
 }
 
@@ -113,7 +117,7 @@ resource "aws_security_group" "eks_sg" {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["10.0.0.0/16"]
   }
 
   egress {
