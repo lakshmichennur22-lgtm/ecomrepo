@@ -30,6 +30,8 @@ pipeline {
                      -n kube-system \
                      --create-namespace \
                      --set clusterName=ecom-ptl-dev-use-eks \
+                     --set serviceAccount.create=false \
+                     --set serviceAccount.name=aws-load-balancer-controller \
                      --set region=us-east-1 \
                      --set vpcId=vpc-05150d92f824de04d
                     '''
