@@ -12,7 +12,7 @@ metadata:
     alb.ingress.kubernetes.io/healthcheck-path: /
 
     # Backend specific
-    alb.ingress.kubernetes.io/backend-protocol: HTTP
+    alb.ingress.kubernetes.io/backend-protocol: /api/orders/health
 spec:
   rules:
     - http:
