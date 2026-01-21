@@ -231,7 +231,13 @@ resource "aws_security_group" "db_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-
+# 👇 ADD THIS TEMPORARILY
+  ingress {
+    from_port   = 3306
+    to_port     = 3306
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.0.0/16"]
+  }
   tags = local.tags
 }
 
