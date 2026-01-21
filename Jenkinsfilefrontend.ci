@@ -5,55 +5,76 @@ pipeline {
         AWS_REGION = "us-east-1"
         AWS_ACCOUNT_ID = "579201838441"
         ECR_REPO = "ecom_frontend_portal_repo"
-        IMAGE_TAG = "latest"
     }
 
     stages {
 
         stage('Checkout') {
             steps {
+                echo "🔄 Checking out source code..."
                 checkout scm
             }
         }
 
+        stage('Set Image Tag') {
+            steps {
+                script {
+                    // Short Git commit hash
+                    GIT_COMMIT_SHORT = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                    // Combine with Jenkins build number
+                    IMAGE_TAG = "${GIT_COMMIT_SHORT}-${BUILD_NUMBER}"
+                    echo "🐳 Image tag will be: ${IMAGE_TAG}"
+                }
+            }
+        }
 
         stage('AWS Login to ECR') {
             steps {
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',
-                                  credentialsId: 'Adithya']]) {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'Adithya']]) {
                     sh '''
-                    aws ecr get-login-password --region $AWS_REGION \
-                    | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+                        echo "🔐 Logging in to AWS ECR..."
+                        aws ecr get-login-password --region $AWS_REGION \
+                        | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
                     '''
                 }
             }
         }
 
-        stage('Docker Build') {
+        stage('Docker Build & Tag') {
             steps {
-                sh '''
-                cd frontend
-                docker build -t $ECR_REPO .
-                docker tag $ECR_REPO:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:$IMAGE_TAG
-                '''
+                sh """
+                    echo "🛠️ Building Docker image..."
+                    cd frontend
+                    docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:$IMAGE_TAG .
+                """
             }
         }
 
         stage('Push Image to ECR') {
             steps {
-                sh '''
-                docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:$IMAGE_TAG
-                '''
+                sh """
+                    echo "🚀 Pushing Docker image to ECR..."
+                    docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:$IMAGE_TAG
+                """
+            }
+        }
+
+        stage('Clean Up Local Images') {
+            steps {
+                sh """
+                    echo "🧹 Cleaning up local Docker images..."
+                    docker rmi $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:$IMAGE_TAG || true
+                """
             }
         }
     }
 
     post {
         success {
-            echo "🚀 Frontend Docker image pushed successfully!"
+            echo "✅ Frontend Docker image pushed successfully with tag ${IMAGE_TAG}"
         }
         failure {
-            echo "❌ Build Failed!"
+            echo "❌ Pipeline failed!"
         }
     }
 }
