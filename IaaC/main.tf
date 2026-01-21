@@ -218,28 +218,21 @@ resource "aws_security_group" "db_sg" {
   name   = "${local.name_prefix}-db-sg"
   vpc_id = aws_vpc.main.id
 
-  ingress {
-    from_port       = 3306
-    to_port         = 3306
-    protocol        = "tcp"
-    security_groups = [aws_security_group.eks_sg.id]
-  }
-
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-# 👇 ADD THIS TEMPORARILY
   ingress {
-    from_port   = 3306
-    to_port     = 3306
-    protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/16"]
+    from_port       = 3306
+    to_port         = 3306
+    protocol        = "tcp"
+    security_groups = [
+      aws_eks_cluster.this.vpc_config[0].cluster_security_group_id
+    ]
   }
-  tags = local.tags
-}
+}  
 
 ########################################
 # DB SUBNET GROUP
